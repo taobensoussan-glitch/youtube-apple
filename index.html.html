@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube — Beta</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js"></script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f4f6;
+    --card: #ffffff;
+    --text: #0a0a0a;
+    --text-2: #5a5a64;
+    --text-3: #8a8a94;
+    --border: #ececef;
+    --hover: #f0f0f3;
+    --selected: #ebebef;
+    --accent: #0a0a0a;
+    --blue: #1d72f3;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.05), 0 24px 56px rgba(0,0,0,0.06);
+    --radius: 18px;
+    --radius-sm: 12px;
+  }
+
+  html, body {
+    background: #e8e8ec;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-feature-settings: 'cv11';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── APP SHELL ─── */
+  .app {
+    background: var(--card);
+    margin: 18px;
+    border-radius: 26px;
+    box-shadow: var(--shadow-lg);
+    min-height: calc(100vh - 36px);
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    overflow: hidden;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    padding: 22px 18px 30px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    max-height: calc(100vh - 36px);
+    background: #fafafc;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 22px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .brand-logo {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-logo svg { width: 22px; height: 22px; }
+  .brand-name { letter-spacing: -.02em; }
+  .brand-beta {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 500;
+    margin-left: auto;
+    padding: 2px 8px;
+    background: var(--hover);
+    border-radius: 999px;
+  }
+
+  .nav-section {
+    margin-bottom: 6px;
+  }
+  .nav-section + .nav-section {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 14px;
+  }
+  .nav-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-weight: 600;
+    letter-spacing: .06em;
+    padding: 10px 14px 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background .15s, color .15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--hover); color: var(--text); }
+  .nav-item.active {
+    background: var(--selected);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .nav-item svg {
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+    stroke-width: 1.8;
+  }
+
+  .channel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-bottom: 2px;
+    transition: background .15s;
+  }
+  .channel-item:hover { background: var(--hover); color: var(--text); }
+  .channel-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+  }
+  .channel-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .channel-dot {
+    width: 6px; height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .show-more {
+    color: var(--text-3);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  .show-more:hover { color: var(--text); }
+
+  /* ─── MAIN ─── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: calc(100vh - 36px);
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 36px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .search-box {
+    flex: 1;
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 12px 18px 12px 22px;
+    background: var(--hover);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: inherit;
+    transition: all .2s;
+  }
+  .search-box input::placeholder { color: var(--text-3); }
+  .search-box input:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--border);
+    box-shadow: 0 0 0 3px rgba(10,10,10,.05);
+  }
+  .search-box svg {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--text-3);
+    pointer-events: none;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .icon-btn {
+    background: none;
+    border: none;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-2);
+    transition: background .15s;
+  }
+  .icon-btn:hover { background: var(--hover); }
+  .icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+
+  .login-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity .2s;
+  }
+  .login-btn:hover { opacity: .85; }
+
+  .avatar-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6b6b6b, #2c2c2c);
+    cursor: pointer;
+    overflow: hidden;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    border: 2px solid var(--border);
+  }
+  .avatar-btn.visible { display: flex; }
+  .avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ─── CONTENT ─── */
+  .content {
+    padding: 28px 36px 60px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: 22px;
+  }
+
+  /* ─── HERO ─── */
+  .hero-area {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+
+  .hero-card {
+    background: var(--hover);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    min-height: 360px;
+    position: relative;
+  }
+  .hero-text {
+    padding: 36px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .hero-tag svg { width: 12px; height: 12px; }
+
+  .hero-title {
+    font-size: clamp(28px, 3vw, 36px);
+    font-weight: 700;
+    letter-spacing: -.025em;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .hero-desc {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hero-play {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 10px 18px 10px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    align-self: flex-start;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .hero-play:hover { background: var(--accent); color: #fff; }
+  .hero-play svg { width: 18px; height: 18px; }
+  .hero-play .play-circle {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+  }
+  .hero-play:hover .play-circle { background: #fff; color: var(--accent); }
+
+  .hero-image {
+    background-size: cover;
+    background-position: center;
+    background-color: #ddd;
+    position: relative;
+  }
+  .hero-dots {
+    position: absolute;
+    bottom: 22px; left: 30px;
+    display: flex; gap: 6px;
+  }
+  .hero-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.18);
+  }
+  .hero-dot.active { background: var(--accent); }
+
+  /* ─── HERO SIDE LIST ─── */
+  .hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .side-item {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .15s;
+    align-items: center;
+  }
+  .side-item:hover { background: var(--hover); }
+  .side-thumb {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background-size: cover;
+    background-position: center;
+    background-color: #ddd;
+    border-radius: 8px;
+  }
+  .side-info { min-width: 0; }
+  .side-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .side-channel {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .side-duration {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  /* ─── SECTIONS ─── */
+  .section { margin-bottom: 40px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  .see-all {
+    margin-left: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .see-all:hover { background: var(--hover); }
+  .see-all svg { width: 12px; height: 12px; }
+
+  .video-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    position: relative;
+  }
+
+  .video-card {
+    cursor: pointer;
+    transition: transform .2s;
+  }
+  .video-card:hover { transform: translateY(-2px); }
+  .video-thumb {
+    width: 100%;
+    aspect-ratio: 16/10;
+    border-radius: var(--radius-sm);
+    background-size: cover;
+    background-position: center;
+    background-color: #ddd;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .video-duration {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    background: rgba(0,0,0,.85);
+    color: #fff;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .video-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 6px;
+    letter-spacing: -.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .video-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .video-channel {
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .check-icon {
+    width: 12px; height: 12px;
+    color: var(--text-3);
+  }
+  .video-stats {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  /* ─── SCROLL CONTROLS ─── */
+  .grid-wrapper {
+    position: relative;
+  }
+  .scroll-arrow {
+    position: absolute;
+    top: 30%;
+    right: -14px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 5;
+    color: var(--text);
+  }
+  .scroll-arrow:hover { background: var(--hover); }
+  .scroll-arrow svg { width: 14px; height: 14px; }
+
+  /* ─── SKELETON ─── */
+  .skel {
+    background: linear-gradient(90deg, #ececef 25%, #f5f5f7 50%, #ececef 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ─── MODAL ─── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .modal-bg.active { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 22px;
+    padding: 36px 40px;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: var(--hover);
+    border: none;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-2);
+  }
+  .modal-close:hover { background: var(--selected); }
+  .modal h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: 6px;
+  }
+  .modal p {
+    color: var(--text-2);
+    font-size: 14px;
+    margin-bottom: 22px;
+    line-height: 1.5;
+  }
+  .modal label {
+    display: block;
+    text-align: left;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 600;
+    margin: 12px 0 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .modal input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--hover);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    margin-bottom: 4px;
+  }
+  .modal input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+  }
+  .modal-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 14px;
+    font-family: inherit;
+    transition: opacity .15s;
+  }
+  .modal-btn:hover { opacity: .85; }
+
+  .setup-info {
+    text-align: left;
+    background: var(--hover);
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .setup-info ol { margin-left: 18px; }
+  .setup-info a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  .setup-info code {
+    background: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    word-break: break-all;
+  }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    color: #9b2226;
+    padding: 12px 22px;
+    border-radius: 12px;
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1100;
+    max-width: 90%;
+    display: none;
+  }
+  .toast.show { display: block; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 1180px) {
+    .hero-area { grid-template-columns: 1fr; }
+    .hero-side { flex-direction: row; overflow-x: auto; }
+    .hero-side .side-item { flex: 0 0 280px; }
+    .video-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; margin: 0; border-radius: 0; min-height: 100vh; }
+    .sidebar { display: none; }
+    .video-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero-card { grid-template-columns: 1fr; }
+    .content { padding: 20px 18px 40px; }
+    .topbar { padding: 18px 18px 14px; }
+  }
+  @media (max-width: 540px) {
+    .video-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ── SIDEBAR ─────────────────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 12.6c0-2 1.5-3 1.6-3-.9-1.3-2.3-1.5-2.7-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.6-1.3 0-2.5.7-3.2 1.9-1.3 2.4-.3 6 1 7.9.6.9 1.3 2 2.3 2 .9 0 1.3-.6 2.4-.6s1.4.6 2.4.6c1 0 1.7-.9 2.3-1.9.7-1.1 1-2.2 1-2.2-.1 0-1.7-.7-1.7-2.6zM15.5 5.7c.5-.6.9-1.5.8-2.4-.7 0-1.6.5-2.1 1.1-.5.6-.9 1.5-.8 2.3.8.1 1.6-.4 2.1-1z"/></svg>
+      </span>
+      <span class="brand-name">YouTube</span>
+      <span class="brand-beta">Beta</span>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z"/></svg>
+        Accueil
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="m14.31 8 5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16 3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>
+        Explorer
+      </div>
+      <div class="nav-item" id="navSubs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+        Abonnements
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+        Bibliothèque
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Historique
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+        À regarder plus tard
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Vidéos likées
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Abonnements</div>
+      <div id="subsList">
+        <!-- placeholder for subscriptions -->
+        <div class="show-more" onclick="handleLoginClick()">Se connecter pour voir vos abonnements</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ─────────────────────── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Rechercher des vidéos, chaînes, sujets..." onkeydown="if(event.key==='Enter') doSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        </button>
+        <button class="login-btn" id="loginBtn" onclick="handleLoginClick()">Connexion</button>
+        <div class="avatar-btn" id="avatarBtn" onclick="logout()" title="Se déconnecter">?</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-title">Accueil</div>
+
+      <!-- HERO AREA -->
+      <div class="hero-area">
+        <div class="hero-card" id="heroCard">
+          <div class="hero-text">
+            <div>
+              <div class="hero-tag">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14l-6-4.5h7.5z"/></svg>
+                À la une
+              </div>
+              <div class="hero-title" id="heroTitle">Bienvenue sur<br>YouTube Beta</div>
+              <div class="hero-desc" id="heroDesc">Configurez votre clé API en cliquant sur "Connexion" pour découvrir les meilleures vidéos du moment, en mode magazine.</div>
+            </div>
+            <button class="hero-play" onclick="playHero()">
+              <span class="play-circle">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+              </span>
+              Lancer la vidéo
+            </button>
+          </div>
+          <div class="hero-image" id="heroImage" style="background: linear-gradient(135deg,#3a3a3a,#1a1a1a);">
+            <div class="hero-dots">
+              <span class="hero-dot active"></span>
+              <span class="hero-dot"></span>
+              <span class="hero-dot"></span>
+              <span class="hero-dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-side" id="heroSide">
+          <!-- side items injected -->
+        </div>
+      </div>
+
+      <!-- ROW: For You -->
+      <div class="section" id="forYouSection">
+        <div class="section-header">
+          <div class="section-title">Pour vous</div>
+          <button class="see-all">Voir tout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="grid-wrapper">
+          <div class="video-grid" id="forYouGrid"></div>
+        </div>
+      </div>
+
+      <!-- ROW: Trending -->
+      <div class="section" id="trendingSection">
+        <div class="section-header">
+          <div class="section-title">Tendances</div>
+          <button class="see-all">Voir tout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="grid-wrapper">
+          <div class="video-grid" id="trendingGrid"></div>
+        </div>
+      </div>
+
+      <!-- ROW: Tech -->
+      <div class="section" id="techSection">
+        <div class="section-header">
+          <div class="section-title">Tech & Sciences</div>
+          <button class="see-all">Voir tout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="grid-wrapper">
+          <div class="video-grid" id="techGrid"></div>
+        </div>
+      </div>
+
+      <!-- ROW: Cuisine -->
+      <div class="section" id="foodSection">
+        <div class="section-header">
+          <div class="section-title">Cuisine & Gastronomie</div>
+          <button class="see-all">Voir tout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="grid-wrapper">
+          <div class="video-grid" id="foodGrid"></div>
+        </div>
+      </div>
+
+      <!-- ROW: Voyage -->
+      <div class="section" id="travelSection">
+        <div class="section-header">
+          <div class="section-title">Voyage & Aventure</div>
+          <button class="see-all">Voir tout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="grid-wrapper">
+          <div class="video-grid" id="travelGrid"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('loginModal')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <h2>Bienvenue</h2>
+    <p>Connectez votre compte Google pour retrouver vos abonnements YouTube et un fil personnalisé.</p>
+    <button class="modal-btn" onclick="doGoogleLogin()">Continuer avec Google</button>
+    <p style="font-size: 11px; color: var(--text-3); margin-top: 14px; margin-bottom: 0;">Accès en lecture seule. Vos données restent privées.</p>
+  </div>
+</div>
+
+<!-- SETUP MODAL -->
+<div class="modal-bg" id="setupModal">
+  <div class="modal" style="max-width: 540px;">
+    <button class="modal-close" onclick="closeModal('setupModal')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <h2>Configuration Google</h2>
+    <p>Pour afficher les vraies vidéos, ajoutez vos identifiants Google (gratuit, ~5 min).</p>
+
+    <div class="setup-info">
+      <ol>
+        <li>Allez sur <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+        <li>Créez un projet, activez <b>YouTube Data API v3</b></li>
+        <li>Créez une <b>Clé API</b> (Identifiants → Créer)</li>
+        <li>Créez un <b>ID client OAuth</b> type "Application Web"</li>
+        <li>Origine JS autorisée : <code id="originUrl">votre URL</code></li>
+      </ol>
+    </div>
+
+    <label>Clé API YouTube</label>
+    <input type="text" id="apiKeyInput" placeholder="AIzaSy...">
+
+    <label>ID client OAuth 2.0</label>
+    <input type="text" id="clientIdInput" placeholder="123456789-xxx.apps.googleusercontent.com">
+
+    <button class="modal-btn" onclick="saveCredentials()">Enregistrer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let API_KEY = localStorage.getItem('yt_api_key') || '';
+let CLIENT_ID = localStorage.getItem('yt_client_id') || '';
+const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
+const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest';
+
+let tokenClient = null;
+let isSignedIn = false;
+let gapiInited = false;
+let gisInited = false;
+let heroVideoId = null;
+let trendingCache = [];
+
+document.getElementById('originUrl').textContent = window.location.origin || 'http://localhost';
+
+function initApp() {
+  if (API_KEY && CLIENT_ID) {
+    initGapi();
+    initGis();
+  } else {
+    showFallbackContent();
+  }
+}
+
+function initGapi() {
+  if (typeof gapi === 'undefined') { setTimeout(initGapi, 200); return; }
+  gapi.load('client', async () => {
+    try {
+      await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+      gapiInited = true;
+      loadPublicContent();
+    } catch (err) {
+      showError('Clé API invalide ou inaccessible');
+      showFallbackContent();
+    }
+  });
+}
+
+function initGis() {
+  if (typeof google === 'undefined' || !google.accounts) { setTimeout(initGis, 200); return; }
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { showError('Connexion refusée'); return; }
+        isSignedIn = true;
+        closeModal('loginModal');
+        await loadUserData();
+      },
+    });
+    gisInited = true;
+  } catch (err) { showError('Erreur OAuth : ' + err.message); }
+}
+
+async function loadPublicContent() {
+  // Trending hero
+  showSkeletons();
+  try {
+    const trending = await fetchTrending('FR', 24);
+    trendingCache = trending;
+    if (trending.length) setHero(trending[0]);
+    renderHeroSide(trending.slice(1, 5));
+
+    renderGrid('forYouGrid', trending.slice(5, 13));
+    renderGrid('trendingGrid', trending.slice(13, 21));
+
+    const tech = await searchVideos('tech review 2025', 8);
+    renderGrid('techGrid', tech);
+    const food = await searchVideos('recette cuisine française', 8);
+    renderGrid('foodGrid', food);
+    const travel = await searchVideos('travel vlog 4k', 8);
+    renderGrid('travelGrid', travel);
+  } catch (err) {
+    showError('Erreur API : ' + (err.result?.error?.message || err.message || 'requête échouée'));
+  }
+}
+
+async function fetchTrending(region = 'FR', max = 24) {
+  const resp = await gapi.client.youtube.videos.list({
+    part: 'snippet,contentDetails,statistics',
+    chart: 'mostPopular',
+    regionCode: region,
+    maxResults: max,
+  });
+  return resp.result.items.map(formatVideo);
+}
+
+async function searchVideos(query, max = 8) {
+  const resp = await gapi.client.youtube.search.list({
+    part: 'snippet', q: query, type: 'video', maxResults: max, relevanceLanguage: 'fr',
+  });
+  const ids = resp.result.items.map(i => i.id.videoId).join(',');
+  if (!ids) return [];
+  const details = await gapi.client.youtube.videos.list({
+    part: 'snippet,contentDetails,statistics', id: ids,
+  });
+  return details.result.items.map(formatVideo);
+}
+
+function formatVideo(v) {
+  const t = v.snippet.thumbnails;
+  return {
+    id: v.id,
+    title: v.snippet.title,
+    channel: v.snippet.channelTitle,
+    description: v.snippet.description || '',
+    thumb: (t.maxres || t.high || t.medium || t.default).url,
+    thumbHi: (t.maxres || t.standard || t.high || t.medium).url,
+    duration: parseDuration(v.contentDetails?.duration),
+    views: parseInt(v.statistics?.viewCount || 0),
+    publishedAt: v.snippet.publishedAt,
+  };
+}
+
+function parseDuration(iso) {
+  if (!iso) return '';
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return '';
+  const h = parseInt(m[1] || 0), min = parseInt(m[2] || 0), s = parseInt(m[3] || 0);
+  if (h) return `${h}:${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${min}:${String(s).padStart(2,'0')}`;
+}
+
+function formatViews(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1)+' Md vues';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M vues';
+  if (n >= 1e3) return Math.round(n/1e3)+'k vues';
+  return n+' vues';
+}
+
+function timeAgo(date) {
+  const d = new Date(date);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 3600) return Math.round(diff/60) + ' min';
+  if (diff < 86400) return Math.round(diff/3600) + ' h';
+  if (diff < 604800) return Math.round(diff/86400) + ' j';
+  if (diff < 2592000) return Math.round(diff/604800) + ' sem';
+  if (diff < 31536000) return Math.round(diff/2592000) + ' mois';
+  return Math.round(diff/31536000) + ' an';
+}
+
+function setHero(video) {
+  heroVideoId = video.id;
+  const t = video.title.length > 60 ? video.title.substring(0, 60) + '...' : video.title;
+  document.getElementById('heroTitle').textContent = t;
+  document.getElementById('heroDesc').textContent = video.description.substring(0, 160) || `Par ${video.channel} · ${formatViews(video.views)}`;
+  document.getElementById('heroImage').style.backgroundImage = `url("${video.thumbHi}")`;
+}
+
+function playHero() {
+  if (heroVideoId) window.open(`https://www.youtube.com/watch?v=${heroVideoId}`, '_blank');
+  else openSetupModal();
+}
+
+function renderHeroSide(items) {
+  const el = document.getElementById('heroSide');
+  el.innerHTML = '';
+  items.forEach(v => {
+    const div = document.createElement('div');
+    div.className = 'side-item';
+    div.onclick = () => window.open(`https://www.youtube.com/watch?v=${v.id}`, '_blank');
+    div.innerHTML = `
+      <div class="side-thumb" style="background-image:url('${v.thumb}')"></div>
+      <div class="side-info">
+        <div class="side-title">${escapeHtml(v.title)}</div>
+        <div class="side-channel">${escapeHtml(v.channel)}</div>
+        ${v.duration ? `<div class="side-duration">${v.duration}</div>` : ''}
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function renderGrid(id, items) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = '';
+  if (!items || !items.length) return;
+  items.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    card.onclick = () => window.open(`https://www.youtube.com/watch?v=${v.id}`, '_blank');
+    card.innerHTML = `
+      <div class="video-thumb" style="background-image:url('${v.thumb}')">
+        ${v.duration ? `<div class="video-duration">${v.duration}</div>` : ''}
+      </div>
+      <div class="video-title">${escapeHtml(v.title)}</div>
+      <div class="video-meta">
+        <span class="video-channel">${escapeHtml(v.channel)}</span>
+        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="video-stats">${formatViews(v.views)} · il y a ${timeAgo(v.publishedAt)}</div>
+    `;
+    el.appendChild(card);
+  });
+}
+
+function showSkeletons() {
+  ['forYouGrid','trendingGrid','techGrid','foodGrid','travelGrid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = Array(8).fill(0).map(() => `
+        <div>
+          <div class="skel" style="aspect-ratio:16/10;margin-bottom:10px;"></div>
+          <div class="skel" style="height:14px;width:90%;margin-bottom:6px;"></div>
+          <div class="skel" style="height:12px;width:60%;"></div>
+        </div>
+      `).join('');
+    }
+  });
+  // hero side
+  const side = document.getElementById('heroSide');
+  side.innerHTML = Array(4).fill(0).map(() => `
+    <div class="side-item">
+      <div class="skel" style="width:100px;aspect-ratio:16/10;"></div>
+      <div>
+        <div class="skel" style="height:13px;width:90%;margin-bottom:6px;"></div>
+        <div class="skel" style="height:11px;width:60%;"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showFallbackContent() {
+  // Demo placeholder content using high-quality public domain image gradients
+  const demos = [
+    { id: '0', title: 'Configurez votre clé API pour voir le vrai contenu', channel: 'YouTube Beta', g: 'linear-gradient(135deg,#667eea,#764ba2)' },
+    { id: '0', title: '5 étapes simples sur Google Cloud Console', channel: 'Tutoriel', g: 'linear-gradient(135deg,#f093fb,#f5576c)' },
+    { id: '0', title: 'Gratuit pour 10 000 requêtes par jour', channel: 'Info', g: 'linear-gradient(135deg,#4facfe,#00f2fe)' },
+    { id: '0', title: 'OAuth pour connecter votre compte', channel: 'Sécurité', g: 'linear-gradient(135deg,#43e97b,#38f9d7)' },
+    { id: '0', title: 'Vraies miniatures + vraies vues', channel: 'Aperçu', g: 'linear-gradient(135deg,#fa709a,#fee140)' },
+    { id: '0', title: 'Vos abonnements en un clic', channel: 'Personnalisé', g: 'linear-gradient(135deg,#30cfd0,#330867)' },
+    { id: '0', title: 'Cliquez sur Connexion en haut à droite', channel: 'Démarrer', g: 'linear-gradient(135deg,#a8edea,#fed6e3)' },
+    { id: '0', title: 'YouTube Data API v3 — la doc Google', channel: 'Doc', g: 'linear-gradient(135deg,#ff9a9e,#fad0c4)' },
+  ].map(d => ({ ...d, thumb: '', duration: '', views: 0, publishedAt: new Date().toISOString() }));
+
+  // Build manual cards
+  ['forYouGrid','trendingGrid','techGrid','foodGrid','travelGrid'].forEach((id, idx) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    demos.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.onclick = openSetupModal;
+      card.innerHTML = `
+        <div class="video-thumb" style="background:${d.g}"></div>
+        <div class="video-title">${escapeHtml(d.title)}</div>
+        <div class="video-meta">
+          <span class="video-channel">${escapeHtml(d.channel)}</span>
+        </div>
+        <div class="video-stats">Cliquez pour configurer</div>
+      `;
+      el.appendChild(card);
+    });
+  });
+
+  // Hero side fallback
+  const side = document.getElementById('heroSide');
+  side.innerHTML = demos.slice(0, 4).map(d => `
+    <div class="side-item" onclick="openSetupModal()">
+      <div class="side-thumb" style="background:${d.g}"></div>
+      <div class="side-info">
+        <div class="side-title">${escapeHtml(d.title)}</div>
+        <div class="side-channel">${escapeHtml(d.channel)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function handleLoginClick() {
+  if (!API_KEY || !CLIENT_ID) { openSetupModal(); return; }
+  openModal('loginModal');
+}
+
+function doGoogleLogin() {
+  if (!gisInited || !tokenClient) { showError('Patientez 2 secondes...'); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function loadUserData() {
+  try {
+    const me = await gapi.client.youtube.channels.list({ part: 'snippet', mine: true });
+    if (me.result.items?.length) {
+      const ch = me.result.items[0];
+      const av = document.getElementById('avatarBtn');
+      const t = ch.snippet.thumbnails?.default?.url;
+      if (t) av.innerHTML = `<img src="${t}" alt="">`;
+      else av.textContent = ch.snippet.title[0].toUpperCase();
+      document.getElementById('loginBtn').style.display = 'none';
+      av.classList.add('visible');
+    }
+
+    const subs = await gapi.client.youtube.subscriptions.list({
+      part: 'snippet', mine: true, maxResults: 12, order: 'relevance',
+    });
+
+    if (subs.result.items?.length) {
+      // Replace sidebar
+      const list = document.getElementById('subsList');
+      list.innerHTML = '';
+      subs.result.items.slice(0, 6).forEach((s, i) => {
+        const div = document.createElement('div');
+        div.className = 'channel-item';
+        const channelId = s.snippet.resourceId.channelId;
+        const thumb = s.snippet.thumbnails?.default?.url;
+        div.onclick = () => window.open(`https://www.youtube.com/channel/${channelId}`, '_blank');
+        div.innerHTML = `
+          <div class="channel-avatar" style="background-image:url('${thumb}')"></div>
+          <div class="channel-name">${escapeHtml(s.snippet.title)}</div>
+          ${i < 3 ? '<div class="channel-dot"></div>' : ''}
+        `;
+        list.appendChild(div);
+      });
+      const more = document.createElement('div');
+      more.className = 'show-more';
+      more.textContent = 'Afficher plus ▾';
+      list.appendChild(more);
+
+      // Latest from subs as a new "for you" prepend
+      const channelIds = subs.result.items.map(s => s.snippet.resourceId.channelId);
+      const videos = await getLatestFromChannels(channelIds.slice(0, 8));
+      if (videos.length) {
+        document.getElementById('forYouGrid').innerHTML = '';
+        renderGrid('forYouGrid', videos.slice(0, 8));
+        document.querySelector('#forYouSection .section-title').textContent = 'Pour vous · Vos abonnements';
+      }
+    }
+  } catch (err) {
+    showError('Erreur profil');
+  }
+}
+
+async function getLatestFromChannels(channelIds) {
+  const allVideos = [];
+  const channelsResp = await gapi.client.youtube.channels.list({
+    part: 'contentDetails', id: channelIds.join(','),
+  });
+  for (const ch of channelsResp.result.items.slice(0, 6)) {
+    const uploadsId = ch.contentDetails.relatedPlaylists.uploads;
+    try {
+      const items = await gapi.client.youtube.playlistItems.list({
+        part: 'snippet,contentDetails', playlistId: uploadsId, maxResults: 2,
+      });
+      const vids = items.result.items.map(i => i.contentDetails.videoId).join(',');
+      if (vids) {
+        const details = await gapi.client.youtube.videos.list({
+          part: 'snippet,contentDetails,statistics', id: vids,
+        });
+        allVideos.push(...details.result.items.map(formatVideo));
+      }
+    } catch (e) {}
+  }
+  return allVideos;
+}
+
+function logout() {
+  const token = gapi.client?.getToken();
+  if (token) {
+    google.accounts.oauth2.revoke(token.access_token, () => {});
+    gapi.client.setToken('');
+  }
+  isSignedIn = false;
+  document.getElementById('loginBtn').style.display = 'inline-block';
+  document.getElementById('avatarBtn').classList.remove('visible');
+  document.getElementById('avatarBtn').innerHTML = '?';
+  document.getElementById('subsList').innerHTML = `<div class="show-more" onclick="handleLoginClick()">Se connecter pour voir vos abonnements</div>`;
+  document.querySelector('#forYouSection .section-title').textContent = 'Pour vous';
+  loadPublicContent();
+}
+
+function showError(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = '⚠️ ' + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 6000);
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openSetupModal() {
+  document.getElementById('apiKeyInput').value = API_KEY;
+  document.getElementById('clientIdInput').value = CLIENT_ID;
+  openModal('setupModal');
+}
+function saveCredentials() {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const clientId = document.getElementById('clientIdInput').value.trim();
+  if (!apiKey || !clientId) { showError('Les deux champs sont requis'); return; }
+  localStorage.setItem('yt_api_key', apiKey);
+  localStorage.setItem('yt_client_id', clientId);
+  API_KEY = apiKey; CLIENT_ID = clientId;
+  closeModal('setupModal');
+  location.reload();
+}
+
+document.querySelectorAll('.modal-bg').forEach(m => {
+  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('active'); });
+});
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank');
+}
+
+window.addEventListener('load', () => setTimeout(initApp, 600));
+</script>
+</body>
+</html>
